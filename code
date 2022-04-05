@@ -1,0 +1,63 @@
+//Webhook temperature: A program for the Particle Argon that reads the light level from a BH1750 sensor and publishes "light" and "darkness" to the
+//Particle cloud respectively when the levels rises above and sinks below a specified level.
+//Created for task 3.2C of SIT210
+//Author: Matthew Murrell
+//Date: 03/04/2022
+
+//Libraries
+#include <BH1750.h>
+
+//Constants
+const int DELAY_TIME = 5000; // The number of milliseconds delayed between each reading
+const int LIGHT_LEVEL = 50; //The light threshold
+
+//Defines the BH1750 sensor as 'light_sen'. 
+BH1750 light_sen(0x23, Wire);
+
+//Sets up the BH1750 Sensor
+void setup()
+{
+    //Initializes the chip and the i2c interface
+    light_sen.begin();
+    //Sets up sensor in forced high res mode.
+    light_sen.set_sensor_mode(BH1750::forced_mode_high_res2);
+}
+	
+//Reads the light level from the DHT sensor and returns it as a string.
+float get_light() {
+    //Prepares the sensor to make a measurement
+    light_sen.make_forced_measurement();
+    //Returns the value of 
+    return light_sen.get_light_level();
+}
+
+//Publishes the passed string to the Particle Cloud under the 'terrarium_light' event.
+void pub_light(String status) {
+    Particle.publish("terrarium_light", status , PRIVATE);
+}
+
+//Publishes the work "light" to the cloud, tests the light level until the light level sinks below the 
+void light_loop() {
+    //Publishes the string "light" to the cloud.
+    pub_light("light");
+    //Tests the light level until it falls below the threshold
+    float light;
+    do {
+        light = get_light();
+        delay (DELAY_TIME);
+    } while (light >= LIGHT_LEVEL);
+    //Publishes the string "light" to the cloud.
+    pub_light("darkness");
+}
+
+
+//The main loop of the system
+void loop() {
+    //Gets the current light level and assigns it to light
+    float light = get_light() ;
+    //If the light level is above the specified threshold,  light_loop is called 
+    if (light >= LIGHT_LEVEL){
+        light_loop();
+    }
+    delay (DELAY_TIME);
+}
